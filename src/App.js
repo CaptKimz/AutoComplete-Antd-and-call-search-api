@@ -1,9 +1,19 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, {
+  useState,
+  useRef,
+  useMemo,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import './style.css';
 import 'antd/dist/antd.css';
 import { Spin, AutoComplete, Button } from 'antd';
 import debounce from 'lodash/debounce';
-function DebounceSelect({ fetchOptions, debounceTimeout = 800, ...props }) {
+const DebounceSelect = forwardRef(function DebounceSelect(
+  { fetchOptions, debounceTimeout = 800, ...props },
+  ref
+) {
   const [fetching, setFetching] = useState(false);
   const [allOptions, setAllOptions] = useState([]);
   const [searchValue, setSearchValue] = useState(''); // Maintain search value
@@ -28,6 +38,11 @@ function DebounceSelect({ fetchOptions, debounceTimeout = 800, ...props }) {
     return debounce(loadOptions, debounceTimeout);
   }, [debounceTimeout]);
 
+  useImperativeHandle(ref, () => ({
+    debounceFetcher: (searchValue, nextPage) =>
+      debounceFetcher(searchValue, nextPage),
+  }));
+
   const handlePopupScroll = (e) => {
     var target = e.target;
     if (
@@ -41,7 +56,6 @@ function DebounceSelect({ fetchOptions, debounceTimeout = 800, ...props }) {
       debounceFetcher(searchValue, nextPage); // Call fetcher with the search value and new page number
     }
   };
-  console.log(fetching);
   return (
     <>
       <AutoComplete
@@ -64,10 +78,8 @@ function DebounceSelect({ fetchOptions, debounceTimeout = 800, ...props }) {
       />
     </>
   );
-}
+});
 async function fetchUserList(username, page) {
-  console.log('fetching user', username);
-  console.log('fetching page', page);
   return fetch(
     `https://ws-public.interpol.int/notices/v1/red?forename=${username}&resultPerPage=20&page=${page}`
   )
@@ -83,14 +95,19 @@ async function fetchUserList(username, page) {
     });
 }
 export default function App() {
-  const [value, setValue] = React.useState([]);
+  const [value, setValue] = useState('');
   const handleSelectChange = (newValue) => {
     setValue(newValue);
   };
-  console.log(value);
+  const fetchDataRef = useRef(null);
+  useEffect(() => {
+    setValue('ELISA');
+    fetchDataRef.current.debounceFetcher('ELISA', 1);
+  }, []);
   return (
     <>
       <DebounceSelect
+        ref={fetchDataRef}
         value={value}
         placeholder="Select users"
         fetchOptions={fetchUserList}
